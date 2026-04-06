@@ -94,7 +94,7 @@ with col_entry:
     st.markdown("<h2 style='color: #2e7d32;'>Billing Entry</h2>", unsafe_allow_html=True)
     current_sl = get_next_sl_no()
     
-    calc_type = st.selectbox("Select Procurement Logic (పద్ధతి):", ("75kg Sum", "100kg Quintal Sum"))
+    calc_type = st.selectbox("Select Procurement Logic (పద్ధతి):", ("75kg Calculation", "100kg Quintal Calculation"))
     f_name = st.text_input("Farmer Name (రైతు పేరు):")
     f_phone = st.text_input("Phone Number (WhatsApp - ఐచ్ఛికం):")
     
@@ -180,4 +180,4 @@ if os.path.exists(DB_FILE):
     st.dataframe(df.sort_values(by='SL_No', ascending=False), use_container_width=True)
     st.download_button("Download Full CSV Data", df.to_csv(index=False), "Full_Report.csv", "text/csv")
 else:
-    st.info("Inka bills emi generate kaledu ra.")
+    st.info("Bill Not Generated.")
