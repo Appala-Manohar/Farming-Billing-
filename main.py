@@ -19,8 +19,8 @@ def get_next_sl_no():
             return 1
     return 1
 
-# --- PDF Generation (Professional Receipt) ---
-def create_pdf(f_name, bags, extra_kgs, input_cost, adj_rate, cost_per_kg, bags_amt, extra_amt, gross, cc, hamali, net, calc_type, sl_no):
+# --- Professional PDF Generation Function ---
+def create_pdf(f_name, bags, extra_kgs, input_cost, adj_rate, cost_per_kg, bags_amt, extra_amt, gross, cc, hamali, advance, net, calc_type, sl_no):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
@@ -28,6 +28,7 @@ def create_pdf(f_name, bags, extra_kgs, input_cost, adj_rate, cost_per_kg, bags_
     pdf.set_font("Arial", '', 11)
     pdf.cell(200, 10, f"Bill No: {sl_no} | Date: {datetime.now().strftime('%d/%m/%Y')}", ln=True, align='R')
     pdf.ln(5)
+    
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(200, 10, f"Farmer Name: {f_name.upper()}", ln=True)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
@@ -35,14 +36,14 @@ def create_pdf(f_name, bags, extra_kgs, input_cost, adj_rate, cost_per_kg, bags_
     
     pdf.set_font("Arial", '', 11)
     if calc_type == "75kg Sum":
-        pdf.cell(100, 8, f"Adjusted Rate/70: Rs. {adj_rate:.2f}")
+        pdf.cell(100, 8, f"Adjusted Rate: Rs. {adj_rate:.2f}")
         pdf.cell(100, 8, f"Rate per KG: Rs. {cost_per_kg:.4f}", ln=True, align='R')
     else:
         pdf.cell(100, 8, f"Total Weight: {(bags*68)+extra_kgs} kg")
-        pdf.cell(100, 8, f"Rate per KG (Cost/100): Rs. {cost_per_kg:.2f}", ln=True, align='R')
+        pdf.cell(100, 8, f"Rate per KG: Rs. {cost_per_kg:.2f}", ln=True, align='R')
     
     pdf.ln(5)
-    pdf.cell(150, 8, f"Bags Amount ({bags}):")
+    pdf.cell(150, 8, f"Bags Amount ({bags} bags):")
     pdf.cell(30, 8, f"Rs. {bags_amt:.2f}", ln=True, align='R')
     pdf.cell(150, 8, f"Extra KG Amount ({extra_kgs} kg):")
     pdf.cell(30, 8, f"Rs. {extra_amt:.2f}", ln=True, align='R')
@@ -53,50 +54,51 @@ def create_pdf(f_name, bags, extra_kgs, input_cost, adj_rate, cost_per_kg, bags_
     pdf.ln(5)
     
     pdf.set_font("Arial", '', 11)
-    pdf.cell(150, 8, "(-) CC Charge (1%):")
+    pdf.cell(150, 8, "(-) 1% CC Charge:")
     pdf.cell(30, 8, f"Rs. {cc:.2f}", ln=True, align='R')
-    pdf.cell(150, 8, f"(-) Hamali (Rs. 5 x {bags}):")
+    pdf.cell(150, 8, f"(-) Hamali (Rs. 5 per bag):")
     pdf.cell(30, 8, f"Rs. {hamali:.2f}", ln=True, align='R')
+    
+    if advance > 0:
+        pdf.set_text_color(200, 0, 0)
+        pdf.cell(150, 8, "(-) Advance Amount Paid:")
+        pdf.cell(30, 8, f"Rs. {advance:.2f}", ln=True, align='R')
+        pdf.set_text_color(0, 0, 0)
     
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(5)
     pdf.set_font("Arial", 'B', 14)
-    pdf.cell(150, 10, "Final Payment:")
+    pdf.cell(150, 10, "Final Payable Amount:")
     pdf.cell(30, 10, f"Rs. {net:,.2f}", ln=True, align='R')
     return pdf.output(dest='S').encode('latin-1')
-
-# --- DB Initialization ---
-if not os.path.exists(DB_FILE):
-    with open(DB_FILE, mode='w', newline='', encoding='utf-8') as f:
-        writer = csv.writer(f)
-        writer.writerow(['SL_No', 'Date', 'Farmer_Name', 'Calc_Type', 'Bags', 'Extra_KGs', 'Input_Rate', 'Gross_Total', 'Net_Payable'])
 
 # --- UI Setup ---
 st.set_page_config(page_title="Rice Mill Digital Billing", layout="wide")
 
-# Custom Styles to match your screenshot
 st.markdown("""
     <style>
     .main { background-color: #f8f9fa; }
     .receipt-card {
-        background-color: white; padding: 25px; border-radius: 10px;
-        border: 1px solid #2e7d32; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        color: black; font-family: sans-serif;
+        background-color: white; padding: 25px; border-radius: 12px;
+        border: 2px solid #2e7d32; box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+        color: black; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
-    .stButton>button { background-color: #2e7d32; color: white; border-radius: 5px; }
+    .stButton>button { width: 100%; border-radius: 8px; font-weight: bold; }
+    .stNumberInput, .stTextInput, .stSelectbox { margin-bottom: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
-# Main Dashboard Layout (Split Screen)
+# Main Dashboard Layout
 col_entry, col_preview = st.columns([1, 1.2], gap="large")
 
 with col_entry:
-    st.markdown("<h2 style='color: #2e7d32;'>Billing Entry</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color: #2e7d32; margin-top:0;'>🌾 Billing Entry</h2>", unsafe_allow_html=True)
     current_sl = get_next_sl_no()
+    st.info(f"📋 **Next Bill Serial Number: {current_sl}**")
     
-    calc_type = st.selectbox("Select Procurement Logic (పద్ధతి):", ("75kg Calculation", "100kg Quintal Calculation"))
+    calc_type = st.selectbox("Select Procurement Logic (పద్ధతి):", ("75kg Calculation", "100kg Calculaton"))
     f_name = st.text_input("Farmer Name (రైతు పేరు):")
-    f_phone = st.text_input("Phone Number (WhatsApp - ఐచ్ఛికం):")
+    f_phone = st.text_input("Phone Number (WhatsApp):")
     
     c1, c2 = st.columns(2)
     with c1:
@@ -106,10 +108,12 @@ with col_entry:
         input_cost = st.number_input("Input Cost (ధర):", min_value=0.0, value=1855.0 if calc_type=="75kg Sum" else 2480.0)
         apply_cc = st.checkbox("Apply 1% CC Deduction?", value=True)
     
+    advance_paid = st.number_input("Advance Amount (ముందుగా ఇచ్చిన డబ్బు):", min_value=0.0, step=100.0)
+    
     st.write("---")
-    generate_btn = st.button("Calculate & Preview Bill")
+    generate_btn = st.button("Calculate & Preview Bill", type="primary")
 
-# --- Calculations ---
+# --- CALCULATIONS ---
 if calc_type == "75kg Sum":
     adj_rate = input_cost * (68/75)
     cost_per_kg = adj_rate / 70
@@ -125,59 +129,84 @@ else:
 gross = bags_amt + extra_amt
 cc_val = gross * 0.01 if apply_cc else 0.0
 hamali = bags * 5
-net = gross - cc_val - hamali
+net = gross - cc_val - hamali - advance_paid
 
 with col_preview:
-    st.markdown("<h2 style='color: #2e7d32; text-align: center;'>Receipt Preview</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color: #2e7d32; text-align: center; margin-top:0;'>Receipt Preview</h2>", unsafe_allow_html=True)
     
     if generate_btn and f_name:
-        # Save to CSV immediately on generation
+        # Create CSV with 10 columns if it doesn't exist
+        if not os.path.exists(DB_FILE):
+            with open(DB_FILE, mode='w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow(['SL_No', 'Date', 'Farmer_Name', 'Calc_Type', 'Bags', 'Extra_KGs', 'Input_Rate', 'Gross_Total', 'Advance_Paid', 'Net_Payable'])
+        
+        # Save Entry to CSV
         with open(DB_FILE, mode='a', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
-            writer.writerow([current_sl, datetime.now().strftime('%d/%m/%Y'), f_name.upper(), calc_type, bags, extra_kgs, input_cost, round(gross, 2), round(net, 2)])
+            writer.writerow([current_sl, datetime.now().strftime('%d/%m/%Y'), f_name.upper(), calc_type, bags, extra_kgs, input_cost, round(gross, 2), round(advance_paid, 2), round(net, 2)])
         
-        # Display Receipt Card (Matching your screenshot)
+        # Display Receipt Card (Matching your Screenshot)
         st.markdown(f"""
         <div class="receipt-card">
             <h2 style="text-align:center; color:#2e7d32; margin-bottom:20px;">PADDY PURCHASE RECEIPT</h2>
-            <p><b>Farmer Name:</b> {f_name.upper()}</p>
+            <p style="font-size:1.1em;"><b>Farmer Name:</b> {f_name.upper()}</p>
             <p><b>Bill No:</b> {current_sl} | <b>Date:</b> {datetime.now().strftime('%d/%m/%Y')}</p>
-            <hr>
-            <table style="width:100%; border-collapse: collapse; line-height: 1.8;">
-                <tr style="border-bottom: 1px solid #eee;"><td>Adjusted Rate/70:</td><td style="text-align:right">₹{adj_rate:.2f}</td></tr>
-                <tr style="border-bottom: 1px solid #eee;"><td>Rate per KG:</td><td style="text-align:right">₹{cost_per_kg:.4f}</td></tr>
-                <tr><td colspan="2"><br></td></tr>
-                <tr><td>Bags Amount ({bags}):</td><td style="text-align:right">₹{bags_amt:.2f}</td></tr>
-                <tr><td>Extra KG Amount ({extra_kgs} kg):</td><td style="text-align:right">₹{extra_amt:.2f}</td></tr>
-                <tr style="color:#2e7d32; font-weight:bold;"><td>GROSS TOTAL:</td><td style="text-align:right">₹{gross:.2f}</td></tr>
-                <tr><td colspan="2"><hr></td></tr>
-                <tr style="color:#d32f2f;"><td>(-) CC Charge (1%):</td><td style="text-align:right">₹{cc_val:.2f}</td></tr>
-                <tr style="color:#d32f2f;"><td>(-) Hamali (₹5 x {bags}):</td><td style="text-align:right">₹{hamali:.2f}</td></tr>
-                <tr><td colspan="2"><hr></td></tr>
+            <hr style="border: 0.5px solid #eee;">
+            <table style="width:100%; border-collapse: collapse; line-height: 2;">
+                <tr style="border-bottom: 1px solid #f9f9f9;"><td>Bags Amount ({bags}):</td><td style="text-align:right">₹{bags_amt:.2f}</td></tr>
+                <tr style="border-bottom: 1px solid #f9f9f9;"><td>Extra KG Amount ({extra_kgs} kg):</td><td style="text-align:right">₹{extra_amt:.2f}</td></tr>
+                <tr style="color:#2e7d32; font-weight:bold; font-size:1.1em;"><td>GROSS TOTAL:</td><td style="text-align:right">₹{gross:.2f}</td></tr>
+                <tr><td colspan="2"><hr style="border: 0.2px solid #eee;"></td></tr>
+                <tr style="color:#d32f2f;"><td>(-) 1% CC Charge:</td><td style="text-align:right">₹{cc_val:.2f}</td></tr>
+                <tr style="color:#d32f2f;"><td>(-) Hamali (₹5 per bag):</td><td style="text-align:right">₹{hamali:.2f}</td></tr>
+                <tr style="color:#d32f2f; font-weight:bold;"><td>(-) ADVANCE PAID:</td><td style="text-align:right">₹{advance_paid:.2f}</td></tr>
+                <tr><td colspan="2"><hr style="border: 1px solid #2e7d32;"></td></tr>
                 <tr style="font-size:1.8em; color:#1b5e20; font-weight:bold;"><td>Final Payment:</td><td style="text-align:right">₹{net:,.2f}</td></tr>
             </table>
         </div>
+        <p style='color:green; text-align:center; font-weight:bold; margin-top:10px;'>✅ Bill saved successfully!</p>
         """, unsafe_allow_html=True)
         
-        st.write("---")
-        # Action Buttons
+        # Download & WhatsApp Action Buttons
         cp1, cp2 = st.columns(2)
         with cp1:
-            pdf_bytes = create_pdf(f_name, bags, extra_kgs, input_cost, adj_rate, cost_per_kg, bags_amt, extra_amt, gross, cc_val, hamali, net, calc_type, current_sl)
-            st.download_button("⬇️ Download PDF Bill", pdf_bytes, f"Bill_{current_sl}.pdf", "application/pdf")
+            pdf_bytes = create_pdf(f_name, bags, extra_kgs, input_cost, adj_rate, cost_per_kg, bags_amt, extra_amt, gross, cc_val, hamali, advance_paid, net, calc_type, current_sl)
+            st.download_button("⬇️ Download PDF Receipt", pdf_bytes, f"Bill_{current_sl}_{f_name}.pdf", "application/pdf")
         with cp2:
             if f_phone:
-                msg = f"*PADDY BILL*\nBill No: {current_sl}\nFarmer: {f_name.upper()}\nNet Pay: ₹{net:,.2f}"
-                wa_url = f"https://wa.me/{f_phone}?text={msg.replace(' ', '%20').replace('\n', '%0A')}"
-                st.markdown(f'<a href="{wa_url}" target="_blank" style="text-decoration:none;"><button style="width:100%; background-color:#25d366; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer;">Share on WhatsApp 📲</button></a>', unsafe_allow_html=True)
+                wa_msg = f"*PADDY PURCHASE RECEIPT*\n*Bill No:* {current_sl}\n*Farmer:* {f_name.upper()}\n*Advance:* ₹{advance_paid:.2f}\n*Net Payable:* ₹{net:,.2f}"
+                wa_url = f"https://wa.me/{f_phone}?text={wa_msg.replace(' ', '%20').replace('\n', '%0A')}"
+                st.markdown(f'<a href="{wa_url}" target="_blank" style="text-decoration:none;"><button style="width:100%; background-color:#25d366; color:white; border:none; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer;">Share on WhatsApp 📲</button></a>', unsafe_allow_html=True)
+        
+        if st.button("🔄 Click for Next Bill"):
+            st.rerun()
 
-# --- HISTORY SECTION (ALWAYS BELOW) ---
+# --- HISTORY & DELETE SECTION ---
 st.markdown("---")
-st.markdown("<h2 style='color: #2e7d32;'>📊 Billing History (Stored in CSV)</h2>", unsafe_allow_html=True)
+st.markdown("<h2 style='color: #2e7d32;'>📊 Billing History (CSV Data)</h2>", unsafe_allow_html=True)
 
 if os.path.exists(DB_FILE):
-    df = pd.read_csv(DB_FILE)
-    st.dataframe(df.sort_values(by='SL_No', ascending=False), use_container_width=True)
-    st.download_button("Download Full CSV Data", df.to_csv(index=False), "Full_Report.csv", "text/csv")
-else:
-    st.info("Bill Not Generated.")
+    try:
+        df = pd.read_csv(DB_FILE)
+        
+        # Record Deletion Logic
+        with st.expander("🗑️ Delete a Wrong Entry (Row Delete)"):
+            delete_id = st.number_input("Enter Bill No (SL_No) to delete:", min_value=1, step=1)
+            if st.button("Confirm Delete Record"):
+                if delete_id in df['SL_No'].values:
+                    df = df[df['SL_No'] != delete_id]
+                    df.to_csv(DB_FILE, index=False)
+                    st.success(f"Bill No {delete_id} deleted successfully!")
+                    st.rerun()
+                else:
+                    st.error("Aa Bill Number ledu ra, check cheyyi.")
+
+        # Show Table
+        st.dataframe(df.sort_values(by='SL_No', ascending=False), use_container_width=True)
+        
+        # Download History Button
+        st.download_button("📂 Download Full History (.csv)", df.to_csv(index=False), "Paddy_Billing_History.csv", "text/csv")
+        
+    except Exception as e:
+        st.error(f"⚠️ CSV file Not Matched Check it")
