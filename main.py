@@ -98,7 +98,7 @@ with col_entry:
     current_sl = get_next_sl_no()
     st.info(f"📋 **Next Bill Serial Number: {current_sl}**")
     
-    calc_type = st.selectbox("Select Logic:", ("75kg", "100kg"))
+    calc_type = st.selectbox("Select Logic:", ("75kg Sum", "100kg Quintal Sum"))
     f_name = st.text_input("Farmer Name:")
     f_phone = st.text_input("WhatsApp Number (e.g. 918328472024):")
     
